@@ -1,0 +1,69 @@
+<application>
+
+  <name>Make It Roll</name>
+
+  <dependencies>
+      <port>/icubSim/cam/left</port>
+      <port>/icubSim/cam/right</port>
+      <port>/icubSim/cartesianController/right_arm/state:o</port>      
+      <port>/iKinGazeCtrl/rpc</port>
+  </dependencies>
+
+  <module>
+      <name>make-it-roll</name>
+      <node>localhost</node>
+      <stdio>localhost</stdio>
+      <tag>makeItroll</tag>
+  </module>
+
+  <module>
+      <name>yarpview</name>
+      <parameters>--name /outL --x 10 --y 10</parameters>
+      <node>localhost</node>
+      <tag>outL</tag>
+  </module>
+  <module>
+      <name>yarpview</name>
+      <parameters>--name /outR --x 10 --y 30</parameters>
+      <node>localhost</node>
+      <tag>outR</tag>
+  </module>
+  
+  <connection>
+      <from>/icubSim/cam/left</from>
+      <to>/imgL:i</to>
+      <protocol>udp</protocol>
+  </connection>
+  
+  <connection>
+      <from>/icubSim/cam/right</from>
+      <to>/imgR:i</to>
+      <protocol>udp</protocol>
+  </connection>
+  
+  <connection>
+      <from>/imgL:o</from>
+      <to>/outL</to>
+      <protocol>udp</protocol>
+  </connection>
+  
+  <connection>
+      <from>/imgR:o</from>
+      <to>/outR</to>
+      <protocol>udp</protocol>
+  </connection>
+  
+    <connection>
+      <from>/detector/targetL</from>
+      <to>/targetL:i</to>
+      <protocol>udp</protocol>
+  </connection>
+  
+    <connection>
+      <from>/detector/targetR</from>
+      <to>/targetR:i</to>
+      <protocol>udp</protocol>
+  </connection>
+</application>
+
+
