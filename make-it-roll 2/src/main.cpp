@@ -214,58 +214,40 @@ protected:
   }
   
   /***************************************************/
-  
-  int move_eye_down(){
-    if (!startMotordevice("head")){
-      return 1;
-    }
-    IPositionControl *pos;
-    IVelocityControl *vel;
-    IEncoders *enc;
-    robotMotor.view(pos);
-    robotMotor.view(vel);
-    robotMotor.view(enc);
-    if (pos==NULL || vel==NULL || enc==NULL) 
-    {
-      printf("Cannot get interface to robot head\n");
-      robotMotor.close();
-      return 1;
-    }
-    int jnts = 0;
-    pos->getAxes(&jnts);
-    Vector setpoints;
-    setpoints.resize(jnts);
-    for (int i=0; i<jnts; i++) 
-    {
-      setpoints[i] = 0;
-    }
-    pos->positionMove(setpoints.data());
-    yarp::os::Time::delay(2);
-    setpoints[2] = 0;
-    setpoints[3] = -30;
-    pos->positionMove(setpoints.data());
-    yarp::os::Time::delay(2);
+  void open_gaze_interface(){
     
-    
-  }
-  
-  void gaze_ball()
-  {
     drvGaze.view(igaze);
     igaze->storeContext(&startup_context_id);
     igaze->setNeckTrajTime(0.8);
     igaze->setEyesTrajTime(0.4);
-    igaze->lookAtStereoPixels(cogL,cogR);
-    if (igaze->waitMotionDone(2)){
+  }
+  void close_gaze_interface(){
+        if (igaze->waitMotionDone(2)){
       igaze->stopControl();
       igaze->restoreContext(startup_context_id);
-    }
+        }
+    
+  }
+  int move_eye_down(){
+    Vector ang(3);
+    ang[0]= 0; 
+    ang[1]= -40; 
+    ang[2]= 0; 
+    igaze->lookAtAbsAngles(ang); 
+  }
+  
+  
+  void gaze_ball()
+  {
+    igaze->lookAtStereoPixels(cogL,cogR);
   }
   
   void look_down()
   {
+    open_gaze_interface();
     move_eye_down();
     gaze_ball();
+    close_gaze_interface();
   }
   
   /***************************************************/
@@ -294,28 +276,13 @@ protected:
   /***************************************************/
   int home_head()
   {
-    if (!startMotordevice("head")){
-      return 1;
-    }
-    IPositionControl *pos;
-    robotMotor.view(pos);
-    if (pos==NULL) 
-    {
-      printf("Cannot get interface to robot head\n");
-      robotMotor.close();
-      return 1;
-    }
-    int jnts = 0;
-    pos->getAxes(&jnts);
-    Vector setpoints;
-    setpoints.resize(jnts);
-    for (int i=0; i<jnts; i++) 
-    {
-      setpoints[i] = 0;
-    }
-    pos->positionMove(setpoints.data());
-    yarp::os::Time::delay(2);
-    //     vel->velocityMove(setpoints.data());
+    open_gaze_interface();
+    Vector ang(3);
+    ang[0]= 0; 
+    ang[1]= 0; 
+    ang[2]= 0; 
+    igaze->lookAtAbsAngles(ang); 
+    close_gaze_interface();
   }
   
   
