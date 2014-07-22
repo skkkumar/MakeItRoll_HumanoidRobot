@@ -168,35 +168,60 @@ protected:
     return option;
   }
   
-  int approachTargetWithHand(const Vector &x, const Vector &o)
+  void startiArmR()
   {
     drvArm.view(iarm);
     iarm->storeContext(&startup_context_id);
     iarm->setTrajTime(1.0);
-    iarm->goToPose(x,o);
+    
+  }
+  
+  void stopiArmR(bool i)
+  {
     if (iarm->waitMotionDone(2)) {
       printf("Problem occured in moving the hand to position");
     }
+    if (i){
     iarm->stopControl();
     iarm->restoreContext(startup_context_id);
+    }
+  }
+  void enableTorso(){
+    Vector newDof, curDof;
+    iarm->getDOF(curDof);
+    newDof=curDof;
+    newDof[0]=1;
+    newDof[1]=0;
+    newDof[2]=1;        
+    int axis=0;
+    double min, max;
+    iarm->getLimits(axis,&min,&max);
+    iarm->setLimits(axis,min,10.0);
+    iarm->setDOF(newDof,curDof);
+  }
+  int approachTargetWithHand(const Vector &x, const Vector &o)
+  {
+    iarm->goToPose(x,o);
+    stopiArmR(false);
   }
   
   
   /***************************************************/
   void makeItRoll(Vector &x, const Vector &o)
   {
-    drvArm.view(iarm);
-    iarm->storeContext(&startup_context_id);
-    iarm->setTrajTime(1.0);
+//     drvArm.view(iarm);
+//     iarm->storeContext(&startup_context_id);
+//     iarm->setTrajTime(1.0);
 //     x[0] = x[0] * -1;
     x[1] = x[1] * -1;
 //     x[2] = x[2] * -1;
     iarm->goToPose(x,o);
-    if (iarm->waitMotionDone(2)) {
-      printf("Problem occured in Rolling the ball with hand");
-    }
-    iarm->stopControl();
-    iarm->restoreContext(startup_context_id);
+    stopiArmR(false);
+//     if (iarm->waitMotionDone(2)) {
+//       printf("Problem occured in Rolling the ball with hand");
+//     }
+//     iarm->stopControl();
+//     iarm->restoreContext(startup_context_id);
   }
   
   /***************************************************/
@@ -251,12 +276,14 @@ protected:
     
     Vector o=computeHandOrientation();
     printf("computed orientation = (%s)\n",o.toString(3,3).c_str());
-    
+    startiArmR();
+    enableTorso();
     approachTargetWithHand(x,o);
     printf("approached\n");
     
     makeItRoll(x,o);
     printf("roll!\n");
+    stopiArmR(true);
   }
   
   /***************************************************/
@@ -273,35 +300,23 @@ protected:
   
   int home_rightArm()
   {
-    drvArm.view(iarm);
-    iarm->storeContext(&startup_context_id);
-    iarm->setTrajTime(1.0);
+    startiArmR();
+    enableTorso();
     iarm->goToPose(xHome,oHome);
-    if (iarm->waitMotionDone(2)) {
-      printf("Problem occured in Rolling the ball with hand");
-    }
-    iarm->stopControl();
-    iarm->restoreContext(startup_context_id);
+    startiArmR();
   }
   
   void GetHomePose(){
-    drvArm.view(iarm);
-    iarm->storeContext(&startup_context_id);
-    iarm->setTrajTime(1.0);
-    
+
+    startiArmR();
     iarm->getPose(xHome,oHome);
-    if (iarm->waitMotionDone(2)) {
-      printf("Problem occured in Rolling the ball with hand");
-    }
-    iarm->stopControl();
-    iarm->restoreContext(startup_context_id);
-    
+    stopiArmR(true);
   }
   
   void home()
   {
-    home_head();
     home_rightArm();
+    home_head();
   }
   
   /***************************************************/ 
