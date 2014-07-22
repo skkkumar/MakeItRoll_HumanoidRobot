@@ -43,6 +43,7 @@ To write a simple yarp code that does the following things:
 #include <yarp/dev/all.h>
 #include <yarp/sig/all.h>
 #include <yarp/math/Math.h>
+#include <iostream>
 
 #include <iCub/ctrl/math.h>
 YARP_DECLARE_DEVICES(icubmod)
@@ -57,7 +58,7 @@ using namespace iCub::ctrl;
 class CtrlModule: public RFModule
 {
 protected:
-  PolyDriver drvArm, drvGaze, robotMotor;
+  PolyDriver drvArm, drvGaze;
   ICartesianControl *iarm;
   IGazeControl      *igaze;
   
@@ -67,6 +68,7 @@ protected:
   
   Mutex mutex;
   Vector cogL,cogR;
+  Vector xHome, oHome;
   bool okL,okR;
   string side;
   int startup_context_id;
@@ -159,31 +161,15 @@ protected:
   
   /***************************************************/
   // To start different Arm with respect to the use
-  bool cartesianMotordevice(string contLocation){
-    
-    drvArm.close();
+  Property cartesianMotordevice(string contLocation){
     Property option("(device cartesiancontrollerclient)");
     option.put("remote",("/icubSim/cartesianController/"+contLocation+"").c_str());
     option.put("local",("/cartesian_client/"+contLocation+"").c_str());
-    
-    if (!drvArm.open(option))
-      return false;
-    return true;
+    return option;
   }
   
   int approachTargetWithHand(const Vector &x, const Vector &o)
   {
-    if (side == "left"){
-      if (!cartesianMotordevice("left_arm")){
-	return 1;
-      }	  
-    }
-    else{
-      if (!cartesianMotordevice("right_arm")){
-	return 1;
-      }	  
-    }
-    
     drvArm.view(iarm);
     iarm->storeContext(&startup_context_id);
     iarm->setTrajTime(1.0);
@@ -285,105 +271,40 @@ protected:
     close_gaze_interface();
   }
   
-  
-  int home_leftArm()
-  {
-    if (!startMotordevice("left_arm")){
-      return 1;
-    }
-    IPositionControl *pos;
-    robotMotor.view(pos);
-    if (pos==NULL) 
-    {
-      printf("Cannot get interface to robot head\n");
-      robotMotor.close();
-      return 1;
-    }
-    int jnts = 0;
-    pos->getAxes(&jnts);
-    Vector setpoints;
-    setpoints.resize(jnts);
-    for (int i=0; i<7; i++) 
-    {
-      setpoints[i] = 0;
-    }
-    setpoints[1] = 80;
-    setpoints[3] = 50;
-    setpoints[7] = 59;
-    for (int i=8; i<11; i++) 
-    {
-      setpoints[i] = 0;
-    }
-    for (int i=11; i<jnts; i++) 
-    {
-      setpoints[i] = 0;
-    }
-    pos->positionMove(setpoints.data());
-    yarp::os::Time::delay(2);
-    //     vel->velocityMove(setpoints.data());
-  }
-  
   int home_rightArm()
   {
-    if (!startMotordevice("right_arm")){
-      return 1;
+    drvArm.view(iarm);
+    iarm->storeContext(&startup_context_id);
+    iarm->setTrajTime(1.0);
+    iarm->goToPose(xHome,oHome);
+    if (iarm->waitMotionDone(2)) {
+      printf("Problem occured in Rolling the ball with hand");
     }
-    IPositionControl *pos;
-    robotMotor.view(pos);
-    if (pos==NULL) 
-    {
-      printf("Cannot get interface to robot head\n");
-      robotMotor.close();
-      return 1;
-    }
-    int jnts = 0;
-    pos->getAxes(&jnts);
-    Vector setpoints;
-    setpoints.resize(jnts);
-    for (int i=0; i<7; i++) 
-    {
-      setpoints[i] = 0;
-    }
-    setpoints[1] = 80;
-    setpoints[3] = 50;
-    setpoints[7] = 59;
-    for (int i=8; i<11; i++) 
-    {
-      setpoints[i] = 0;
-    }
-    for (int i=11; i<jnts; i++) 
-    {
-      setpoints[i] = 0;
-    }
-    pos->positionMove(setpoints.data());
-    yarp::os::Time::delay(2);
-    //     vel->velocityMove(setpoints.data());
+    iarm->stopControl();
+    iarm->restoreContext(startup_context_id);
   }
   
-  
+  void GetHomePose(){
+    drvArm.view(iarm);
+    iarm->storeContext(&startup_context_id);
+    iarm->setTrajTime(1.0);
+    
+    iarm->getPose(xHome,oHome);
+    if (iarm->waitMotionDone(2)) {
+      printf("Problem occured in Rolling the ball with hand");
+    }
+    iarm->stopControl();
+    iarm->restoreContext(startup_context_id);
+    
+  }
   
   void home()
   {
     home_head();
-    home_leftArm();
     home_rightArm();
   }
   
   /***************************************************/ 
-  
-  bool startMotordevice(string contLocation){
-    robotMotor.close();
-    Property options;
-    options.put("device", "remote_controlboard");
-    options.put("local", "/mover/motor/cient");
-    options.put("remote", ("/icubSim/"+contLocation+"").c_str());
-    if (!robotMotor.open(options)) 
-    {
-      printf("Cannot connect to robot head\n");
-      return false;
-    }
-    return true;
-  }
   
 public:
   /***************************************************/
@@ -409,13 +330,18 @@ public:
     // 	    return false;
     // 	}
     // 	options.clear();
-    
+     Property option;
+     option = cartesianMotordevice("right_arm");
+
+     if (!drvArm.open(option))
+      return false;
+
     Property optGaze("(device gazecontrollerclient)");
     optGaze.put("remote","/iKinGazeCtrl");
     optGaze.put("local",("/"+name+"/gaze").c_str());
     if (!drvGaze.open(optGaze))
       return false;
-    
+    GetHomePose();
     return true;
   }
   
@@ -432,7 +358,6 @@ public:
   {
     drvArm.close();
     drvGaze.close();
-    robotMotor.close();
     imgLPortIn.close();
     imgRPortIn.close();
     imgLPortOut.close();
