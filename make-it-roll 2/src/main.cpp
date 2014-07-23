@@ -109,25 +109,28 @@ protected:
   {
     // FILL IN THE CODE
     Vector codvct;
-    int startup_context_id;
-    drvGaze.view(igaze);
-    igaze->storeContext(&startup_context_id);
-    if (cogL[0] < cogR[0]){  // blue ball is located near the left arm
-      igaze->get3DPoint(0,cogL,0.4,codvct);
-      side = "left";
-    }
-    else{  // blue ball is located near the right arm
+//     int startup_context_id;
+//     drvGaze.view(igaze);
+//     igaze->storeContext(&startup_context_id);
+    open_gaze_interface(false);
+//     if (cogL[0] < cogR[0]){  // blue ball is located near the left arm
+//       igaze->get3DPoint(0,cogL,0.4,codvct);
+//       side = "left";
+//     }
+//     else{  // blue ball is located near the right arm
       igaze->get3DPoint(1,cogR,0.4,codvct);
-      side = "right";
-    }
-    igaze->stopControl();
-    igaze->restoreContext(startup_context_id);
+//       side = "right";
+//     }
+      open_gaze_interface(false);
+//     igaze->stopControl();
+//     igaze->restoreContext(startup_context_id);
     return codvct;
   }
   
   /***************************************************/
   void fixate(Vector &x)
   {
+    igaze->lookAtFixationPoint(x);
     if (side == "left"){
       x[0] += 0.05;
       x[1] -= 0.08;
@@ -140,6 +143,7 @@ protected:
 //       x[2] -= 0.01;
       
     }
+    
   }
   
   
@@ -168,23 +172,35 @@ protected:
     return option;
   }
   
-  void startiArmR()
+  void startiArmR(bool i = true)
   {
     drvArm.view(iarm);
     iarm->storeContext(&startup_context_id);
+    if (i);
     iarm->setTrajTime(1.0);
-    
   }
   
-  void stopiArmR(bool i)
+  void waitForMotion(string forWhat)
   {
-    if (iarm->waitMotionDone(2)) {
+    if (forWhat == "arm"){
+     if (iarm->waitMotionDone(2)) {
       printf("Problem occured in moving the hand to position");
+      }
     }
+    else if (forWhat == "gaze"){
+     if (igaze->waitMotionDone(2)) {
+      printf("Problem occured in moving the head(gaze) to position");
+      }
+      
+    }
+  }
+  void stopiArmR(bool i = true)
+  {
     if (i){
+      waitForMotion("arm");
     iarm->stopControl();
-    iarm->restoreContext(startup_context_id);
     }
+    iarm->restoreContext(startup_context_id);
   }
   void enableTorso(){
     Vector newDof, curDof;
@@ -201,8 +217,9 @@ protected:
   }
   int approachTargetWithHand(const Vector &x, const Vector &o)
   {
-    iarm->goToPose(x,o);
-    stopiArmR(false);
+//     iarm->goToPose(x,o);
+    iarm->goToPoseSync(x,o);
+    waitForMotion("arm");
   }
   
   
@@ -215,8 +232,8 @@ protected:
 //     x[0] = x[0] * -1;
     x[1] = x[1] * -1;
 //     x[2] = x[2] * -1;
-    iarm->goToPose(x,o);
-    stopiArmR(false);
+    iarm->goToPoseSync(x,o);
+    waitForMotion("arm");
 //     if (iarm->waitMotionDone(2)) {
 //       printf("Problem occured in Rolling the ball with hand");
 //     }
@@ -225,18 +242,21 @@ protected:
   }
   
   /***************************************************/
-  void open_gaze_interface(){
+  void open_gaze_interface(bool i = true){
     
     drvGaze.view(igaze);
     igaze->storeContext(&startup_context_id);
+    if (i){
     igaze->setNeckTrajTime(0.8);
     igaze->setEyesTrajTime(0.4);
+    }
   }
-  void close_gaze_interface(){
-        if (igaze->waitMotionDone(2)){
+  void close_gaze_interface(bool i = true){
+    if (i){
+      waitForMotion("gaze");
       igaze->stopControl();
+    }
       igaze->restoreContext(startup_context_id);
-        }
     
   }
   int move_eye_down(){
@@ -283,7 +303,7 @@ protected:
     
     makeItRoll(x,o);
     printf("roll!\n");
-    stopiArmR(true);
+    stopiArmR();
   }
   
   /***************************************************/
@@ -302,15 +322,16 @@ protected:
   {
     startiArmR();
     enableTorso();
-    iarm->goToPose(xHome,oHome);
-    startiArmR();
+    iarm->goToPoseSync(xHome,oHome);
+//     startiArmR();
+    stopiArmR();
   }
   
   void GetHomePose(){
 
-    startiArmR();
+    startiArmR(false);
     iarm->getPose(xHome,oHome);
-    stopiArmR(true);
+    stopiArmR(false);
   }
   
   void home()
