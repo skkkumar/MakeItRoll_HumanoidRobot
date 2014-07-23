@@ -109,21 +109,9 @@ protected:
   {
     // FILL IN THE CODE
     Vector codvct;
-//     int startup_context_id;
-//     drvGaze.view(igaze);
-//     igaze->storeContext(&startup_context_id);
     open_gaze_interface(false);
-//     if (cogL[0] < cogR[0]){  // blue ball is located near the left arm
-//       igaze->get3DPoint(0,cogL,0.4,codvct);
-//       side = "left";
-//     }
-//     else{  // blue ball is located near the right arm
       igaze->get3DPoint(1,cogR,0.4,codvct);
-//       side = "right";
-//     }
       open_gaze_interface(false);
-//     igaze->stopControl();
-//     igaze->restoreContext(startup_context_id);
     return codvct;
   }
   
@@ -131,19 +119,10 @@ protected:
   void fixate(Vector &x)
   {
     igaze->lookAtFixationPoint(x);
-    if (side == "left"){
-      x[0] += 0.05;
-      x[1] -= 0.08;
-//       x[2] -= 0.01; 
-      
-    }
-    else{
+   igaze->setTrackingMode(true);
       x[0] += 0.05;
       x[1] += 0.08;
-//       x[2] -= 0.01;
-      
-    }
-    
+   
   }
   
   
@@ -153,12 +132,6 @@ protected:
     Vector od;
     od.resize(4);
     od[0]=0.0; od[1]=0.0; od[2]=1.0; od[3]=3.0;	
-    //     if (side == "left"){
-    //       od[0]=-1.0; od[1]=0.0; od[2]=-0.0; od[3]=3.0;	  
-    //     }
-    //     else{
-    //       od[0]=-0.03; od[1]=-0.7; od[2]=0.7; od[3]=3.0;
-    //     }
     return od;
     
   }
@@ -183,12 +156,12 @@ protected:
   void waitForMotion(string forWhat)
   {
     if (forWhat == "arm"){
-     if (iarm->waitMotionDone(2)) {
+     if (iarm->waitMotionDone()) {
       printf("Problem occured in moving the hand to position");
       }
     }
     else if (forWhat == "gaze"){
-     if (igaze->waitMotionDone(2)) {
+     if (igaze->waitMotionDone()) {
       printf("Problem occured in moving the head(gaze) to position");
       }
       
@@ -226,19 +199,11 @@ protected:
   /***************************************************/
   void makeItRoll(Vector &x, const Vector &o)
   {
-//     drvArm.view(iarm);
-//     iarm->storeContext(&startup_context_id);
-//     iarm->setTrajTime(1.0);
 //     x[0] = x[0] * -1;
     x[1] = x[1] * -1;
 //     x[2] = x[2] * -1;
     iarm->goToPoseSync(x,o);
     waitForMotion("arm");
-//     if (iarm->waitMotionDone(2)) {
-//       printf("Problem occured in Rolling the ball with hand");
-//     }
-//     iarm->stopControl();
-//     iarm->restoreContext(startup_context_id);
   }
   
   /***************************************************/
@@ -253,7 +218,7 @@ protected:
   }
   void close_gaze_interface(bool i = true){
     if (i){
-      waitForMotion("gaze");
+//       waitForMotion("gaze");
       igaze->stopControl();
     }
       igaze->restoreContext(startup_context_id);
@@ -265,12 +230,14 @@ protected:
     ang[1]= -40; 
     ang[2]= 0; 
     igaze->lookAtAbsAngles(ang); 
+    waitForMotion("gaze");
   }
   
   
   void gaze_ball()
   {
     igaze->lookAtStereoPixels(cogL,cogR);
+    waitForMotion("gaze");
   }
   
   void look_down()
@@ -358,14 +325,7 @@ public:
     attach(rpcPort);
     
     string name=rf.find("name").asString().c_str();
-    
-    // 	options.put("remote", "/icubSim/head");
-    // 	if (!robotHead.open(options)) 
-    // 	{
-    // 	    printf("Cannot connect to robot head\n");
-    // 	    return false;
-    // 	}
-    // 	options.clear();
+
      Property option;
      option = cartesianMotordevice("right_arm");
 
@@ -493,6 +453,3 @@ int main(int argc, char *argv[])
   rf.configure(argc,argv);
   return mod.runModule(rf);
 }
-
-
-
